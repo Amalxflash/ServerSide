@@ -1,0 +1,442 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <link rel="stylesheet" href="style.css">
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Inner Links Checker</title>
+</head>
+<body>
+  <div class="banner"></div>
+  <h1>Inner Links Checker</h1>
+  <form id="urlForm">
+    <textarea id="urls" placeholder="Enter website URLs, one per line" rows="5" cols="50"></textarea><br>
+    <button type="submit">Check Inner Links</button>
+  </form>
+  <img id="loading" src="https://media4.giphy.com/media/dumfpsshcqTsh233xF/giphy.gif?cid=6c09b95269s7q2hsrd9bw071ndfbf05qze2e76djv1o4q3jb&ep=v1_internal_gif_by_id&rid=giphy.gif&ct=s" alt="Loading">
+  <div id="resultsContainer">
+    <div class="table-header">
+      <a href="comparison.html" style="text-decoration: none">Comparison page</a>
+      <div id="resultsSummary">
+        <input type="checkbox" id="filter" name="filter" style="margin-left:-30px;">
+        <label for="filter" id="filterLabel">Filter Header & Footer</label>
+      </div>
+      <button id="downloadButton">Download</button>
+    </div><br><br>
+    <div class="filter-container">
+      <input type="radio" id="all" name="status" value="all" checked>
+      <label for="all">All</label>
+      <input type="radio" id="broken" name="status" value="broken">
+      <label for="broken">Broken</label>
+      <input type="checkbox" id="ariaLabel" name="ariaLabel" style="margin-left: 20px;">
+      <label for="ariaLabel" id="ariaLabelLabel">Aria-label links</label>
+      <input type="checkbox" id="image" name="image" style="margin-left: 20px;">
+      <label for="image" id="imageLabel">Image tags</label>
+      <input type="checkbox" id="hierarchy" name="hierarchy" style="margin-left: 20px;">
+      <label for="hierarchy" id="hierarchyLabel">Heading hierarchy</label>
+      <input type="checkbox" id="meta" name="meta" style="margin-left: 20px;">
+      <label for="meta" id="metaLabel">Page properties</label>
+      <!-- <input type="text" id="domainFilter" placeholder="Filter by domain" style="margin-right: 10px; margin-left: 20px">
+      <input type="text" id="pathFilter" placeholder="Filter by pattern" style="margin-right: 10px; margin-left: 20px"> -->
+    </div>
+    <table id="resultsTable">
+      <thead>
+        <tr>
+          <th onclick="sortTable(0)">Name</th>
+          <th class="url-column" onclick="sortTable(1)">URL</th>
+          <th onclick="sortTable(2)">Status Code</th>
+          <th onclick="sortTable(3)">Status</th>
+        </tr>
+      </thead>
+      <tbody id="resultsTableBody">
+      </tbody>
+    </table>
+    <table id="hierarchyTable" style="display: none;">
+      <thead>
+        <tr>
+          <th>URL</th>
+          <th>Text</th>
+          <th>Tag</th>
+        </tr>
+      </thead>
+      <tbody id="hierarchyTableBody">
+      </tbody>
+    </table>
+    <table id="ariaLabelTable" style="display: none;">
+      <thead>
+        <tr>
+          <th>Main URL</th>
+          <th>Aria-Label</th>
+          <th>Link</th>
+          <th>Target</th>
+        </tr>
+      </thead>
+      <tbody id="ariaLabelTableBody">
+      </tbody>
+    </table>
+    <table id="imageTable" style="display: none;">
+      <thead>
+        <tr>
+          <th>Main URL</th>
+          <th>Source</th>
+          <th>Alt Text</th>
+        </tr>
+      </thead>
+      <tbody id="imageTableBody">
+      </tbody>
+    </table>
+    <table id="metaTable" style="display: none;">
+      <thead>
+        <tr>
+          <th>URL</th>
+          <th>Meta Property</th>
+          <th>Content</th>
+        </tr>
+      </thead>
+      <tbody id="metaTableBody">
+      </tbody>
+    </table>
+  </div>
+  <div id="tablesContainer">
+    <div id="mainLinksTableContainer"></div>
+    <div id="hierarchyTableContainer"></div>
+    <div id="ariaLinksTableContainer"></div>
+    <div id="imagesTableContainer"></div>
+  </div>
+  <!-- Include xlsx library -->
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.17.0/xlsx.full.min.js"></script>
+  <script>
+    document.getElementById('urlForm').addEventListener('submit', async (event) => {
+      event.preventDefault();
+      const urls = document.getElementById('urls').value.trim().split('\n').map(url => url.trim()).filter(url => url);
+      const filterChecked = document.getElementById('filter').checked;
+      const hierarchyChecked = document.getElementById('hierarchy').checked;
+      const ariaLabelChecked = document.getElementById('ariaLabel').checked;
+      const imageChecked = document.getElementById('image').checked;
+      const metaChecked = document.getElementById('meta').checked;
+
+      if (urls.length === 0) {
+        alert('Please enter at least one URL.');
+        return;
+      }
+
+      // Show the loading image
+      document.getElementById('loading').style.display = 'block';
+
+      try {
+        const response = await fetch('http://localhost:3000/check-links', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json'
+          },
+          body: JSON.stringify({ urls, filterChecked, hierarchyChecked, ariaLabelChecked, imageChecked, metaChecked })
+        });
+
+        if (!response.ok) {
+          throw new Error('Network response was not ok');
+        }
+
+        const results = await response.json();
+
+        const resultsTableBody = document.getElementById('resultsTableBody');
+        const hierarchyTableBody = document.getElementById('hierarchyTableBody');
+        const ariaLabelTableBody = document.getElementById('ariaLabelTableBody');
+        const imageTableBody = document.getElementById('imageTableBody');
+        const metaTableBody = document.getElementById('metaTableBody');
+
+        resultsTableBody.innerHTML = '';
+        hierarchyTableBody.innerHTML = '';
+        ariaLabelTableBody.innerHTML = '';
+        imageTableBody.innerHTML = '';
+        metaTableBody.innerHTML = '';
+
+        results.forEach(pageResult => {
+          if (pageResult.error) {
+            const row = document.createElement('tr');
+            const nameCell = document.createElement('td');
+            nameCell.textContent = pageResult.pageUrl;
+            nameCell.colSpan = 4;
+            row.appendChild(nameCell);
+            resultsTableBody.appendChild(row);
+
+            const errorRow = document.createElement('tr');
+            const errorCell = document.createElement('td');
+            errorCell.textContent = pageResult.error;
+            errorCell.colSpan = 4;
+            errorRow.appendChild(errorCell);
+            resultsTableBody.appendChild(errorRow);
+          } else {
+            pageResult.links.forEach(result => {
+              const row = document.createElement('tr');
+
+              const nameCell = document.createElement('td');
+              nameCell.textContent = pageResult.pageUrl;
+              if (!pageResult.pageUrl.includes('microsoft.com')) {
+                  nameCell.classList.add('orange');
+              }
+
+              const urlCell = document.createElement('td');
+              urlCell.textContent = result.url;
+              if (result.url.includes('%20')) {
+                urlCell.classList.add('red');
+              } else if (result.url.includes('aka.ms')) {
+                urlCell.classList.add('green');
+              } else if (result.url.match(/^https?:\/\/.*#.*$/)) {
+                urlCell.classList.add('blue');
+              } else if (result.url.startsWith('#')) {
+                urlCell.classList.add('color-03AED2');
+              }
+
+              const statusCodeCell = document.createElement('td');
+              statusCodeCell.textContent = result.statusCode || '-';
+
+              const statusCell = document.createElement('td');
+              statusCell.textContent = getStatusText(result.statusCode);
+              row.appendChild(nameCell);
+              row.appendChild(urlCell);
+              row.appendChild(statusCodeCell); 
+              row.appendChild(statusCell);
+              resultsTableBody.appendChild(row);
+            });
+
+            if (hierarchyChecked) {
+  pageResult.hierarchy.forEach(item => {
+    const row = document.createElement('tr');
+
+    const urlCell = document.createElement('td');
+    urlCell.textContent = pageResult.pageUrl;
+
+    const textCell = document.createElement('td');
+    textCell.textContent = item.text;
+
+    const tagCell = document.createElement('td');
+    tagCell.textContent = item.tag;
+
+    row.appendChild(urlCell);
+    row.appendChild(textCell);
+    row.appendChild(tagCell);
+
+    hierarchyTableBody.appendChild(row);
+  });
+}
+
+
+            if (ariaLabelChecked) {
+              pageResult.ariaLinks.forEach(link => {
+                const row = document.createElement('tr');
+                const mainUrlCell = document.createElement('td');
+                mainUrlCell.textContent = pageResult.pageUrl;
+                const ariaLabelCell = document.createElement('td');
+                ariaLabelCell.textContent = link.ariaLabel;
+                const linkCell = document.createElement('td');
+                linkCell.textContent = link.url;
+                const targetCell = document.createElement('td');
+                targetCell.textContent = link.target;
+                row.appendChild(mainUrlCell);
+                row.appendChild(ariaLabelCell);
+                row.appendChild(linkCell);
+                row.appendChild(targetCell);
+                ariaLabelTableBody.appendChild(row);
+              });
+            }
+
+            if (imageChecked) {
+              pageResult.images.forEach(image => {
+                const row = document.createElement('tr');
+                const mainUrlCell = document.createElement('td');
+                mainUrlCell.textContent = pageResult.pageUrl || 'N/A';
+                const srcCell = document.createElement('td');
+                srcCell.textContent = image.src || 'N/A';
+                const altCell = document.createElement('td');
+                altCell.textContent = image.alt || 'N/A';
+                row.appendChild(mainUrlCell);
+                row.appendChild(srcCell);
+                row.appendChild(altCell);
+                imageTableBody.appendChild(row);
+              });
+            }
+
+            if (metaChecked) {
+  pageResult.metaProperties.forEach(meta => {
+    const row = document.createElement('tr');
+
+    const urlCell = document.createElement('td');
+    urlCell.textContent = pageResult.pageUrl;
+
+    const metaPropertyCell = document.createElement('td');
+    metaPropertyCell.textContent = meta.property || meta.name || meta.charset || meta['http-equiv'] || 'N/A';
+
+    const contentCell = document.createElement('td');
+    contentCell.textContent = meta.content || meta.charset || 'N/A';
+
+    row.appendChild(urlCell);
+    row.appendChild(metaPropertyCell);
+    row.appendChild(contentCell);
+
+    metaTableBody.appendChild(row);
+  });
+}
+
+          }
+        });
+
+        // Display tables based on checkbox states
+        const resultsTable = document.getElementById('resultsTable');
+        const hierarchyTable = document.getElementById('hierarchyTable');
+        const ariaLabelTable = document.getElementById('ariaLabelTable');
+        const imageTable = document.getElementById('imageTable');
+        const metaTable = document.getElementById('metaTable');
+
+        if (hierarchyChecked) {
+          hierarchyTable.style.display = '';
+        } else {
+          hierarchyTable.style.display = 'none';
+        }
+
+        if (ariaLabelChecked) {
+          ariaLabelTable.style.display = '';
+        } else {
+          ariaLabelTable.style.display = 'none';
+        }
+
+        if (imageChecked) {
+          imageTable.style.display = '';
+        } else {
+          imageTable.style.display = 'none';
+        }
+
+        if (metaChecked) {
+          metaTable.style.display = '';
+        } else {
+          metaTable.style.display = 'none';
+        }
+
+        if (!hierarchyChecked && !ariaLabelChecked && !imageChecked && !metaChecked) {
+          resultsTable.style.display = '';
+        } else {
+          resultsTable.style.display = 'none';
+        }
+
+      } catch (error) {
+        console.error('Error fetching the provided URL:', error.message);
+        alert('Error fetching the provided URL.');
+      } finally {
+        // Hide the loading image
+        document.getElementById('loading').style.display = 'none';
+      }
+    });
+
+    document.getElementById('all').addEventListener('change', () => {
+      filterLinks('all');
+    });
+
+    document.getElementById('broken').addEventListener('change', () => {
+      filterLinks('broken');
+    });
+
+    function filterLinks(status) {
+      const rows = document.querySelectorAll('#resultsTableBody tr');
+      rows.forEach(row => {
+        const statusCell = row.querySelector('td:nth-child(4)');
+        if (status === 'all' || statusCell.textContent.toLowerCase() === status) {
+          row.style.display = '';
+        } else {
+          row.style.display = 'none';
+        }
+      });
+    }
+
+    function getStatusText(statusCode) {
+      if (statusCode >= 200 && statusCode < 300) {
+        return 'Working';
+      } else if (statusCode >= 300 && statusCode < 400) {
+        return 'Redirect';
+      } else if (statusCode >= 400 && statusCode < 500) {
+        return 'Broken (Client Error)';
+      } else if (statusCode >= 500 && statusCode < 600) {
+        return 'Broken (Server Error)';
+      } else {
+        return 'Unknown Status';
+      }
+    }
+
+    // Function to download table data as Excel
+    function downloadAsExcel() {
+      const wb = XLSX.utils.book_new();
+
+      if (document.getElementById('resultsTable').style.display !== 'none') {
+        const ws = XLSX.utils.table_to_sheet(document.getElementById('resultsTable'));
+        XLSX.utils.book_append_sheet(wb, ws, 'Links');
+      }
+
+      if (document.getElementById('hierarchyTable').style.display !== 'none') {
+        const ws = XLSX.utils.table_to_sheet(document.getElementById('hierarchyTable'));
+        XLSX.utils.book_append_sheet(wb, ws, 'Hierarchy');
+      }
+
+      if (document.getElementById('ariaLabelTable').style.display !== 'none') {
+        const ws = XLSX.utils.table_to_sheet(document.getElementById('ariaLabelTable'));
+        XLSX.utils.book_append_sheet(wb, ws, 'Aria-Label');
+      }
+
+      if (document.getElementById('imageTable').style.display !== 'none') {
+        const ws = XLSX.utils.table_to_sheet(document.getElementById('imageTable'));
+        XLSX.utils.book_append_sheet(wb, ws, 'Images');
+      }
+
+      if (document.getElementById('metaTable').style.display !== 'none') {
+        const ws = XLSX.utils.table_to_sheet(document.getElementById('metaTable'));
+        XLSX.utils.book_append_sheet(wb, ws, 'Meta Properties');
+      }
+
+      XLSX.writeFile(wb, 'results.xlsx');
+    }
+
+    document.getElementById('downloadButton').addEventListener('click', downloadAsExcel);
+
+    function filterLinksByDomainAndPath() {
+      const domainFilterValue = document.getElementById('domainFilter').value.toLowerCase();
+      const pathFilterValue = document.getElementById('pathFilter').value.toLowerCase();
+      const rows = document.querySelectorAll('#resultsTableBody tr');
+
+      rows.forEach(row => {
+        const urlCell = row.querySelector('td:nth-child(2)');
+        const url = urlCell.textContent.toLowerCase();
+        const domainMatch = domainFilterValue === '' || url.includes(domainFilterValue);
+        const pathMatch = pathFilterValue === '' || url.includes(pathFilterValue);
+
+        if (domainMatch && pathMatch) {
+          row.style.display = '';
+        } else {
+          row.style.display = 'none';
+        }
+      });
+    }
+
+    document.getElementById('domainFilter').addEventListener('input', filterLinksByDomainAndPath);
+    document.getElementById('pathFilter').addEventListener('input', filterLinksByDomainAndPath);
+
+    function sortTable(n) {
+      const table = document.getElementById('resultsTable');
+      const rows = Array.from(table.rows).slice(1);
+      const isAscending = table.rows[0].cells[n].classList.toggle('asc');
+      const dirModifier = isAscending ? 1 : -1;
+
+      const sortedRows = rows.sort((a, b) => {
+        const aText = a.cells[n].textContent.trim();
+        const bText = b.cells[n].textContent.trim();
+
+        if (!isNaN(aText) && !isNaN(bText)) {
+          return dirModifier * (aText - bText);
+        } else {
+          return dirModifier * aText.localeCompare(bText);
+        }
+      });
+
+      const tbody = table.querySelector('tbody');
+      tbody.innerHTML = '';
+      sortedRows.forEach(row => tbody.appendChild(row));
+    }
+  </script>
+</body>
+</html>

@@ -1,0 +1,80 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <link rel="stylesheet" href="style.css">
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Inner Links Comparison Checker</title>
+</head>
+<body>
+  <div class="banner"></div>
+  <h1>Inner Links Comparison Checker</h1>  
+  <a href="index.html" style="text-decoration: none">Go to Home</a> <br>
+
+  <form id="comparisonForm">
+    <textarea id="urls1" placeholder="Enter website URLs for Set 1, one per line" rows="5" cols="50"></textarea><br>
+    <textarea id="urls2" placeholder="Enter website URLs for Set 2, one per line" rows="5" cols="50"></textarea><br>
+    <button type="submit">Compare Inner Links</button><br><br>
+  </form>
+  <img id="loading" src="https://media4.giphy.com/media/dumfpsshcqTsh233xF/giphy.gif?cid=6c09b95269s7q2hsrd9bw071ndfbf05qze2e76djv1o4q3jb&ep=v1_internal_gif_by_id&rid=giphy.gif&ct=s" alt="Loading" style="display:none;">
+
+  <div id="comparisonOptions">
+    <input type="radio" id="allRadio" name="comparisonType" value="all">
+    <label for="allRadio">All</label><br>
+    <input type="radio" id="headingRadio" name="comparisonType" value="heading" checked>
+    <label for="headingRadio">Heading Hierarchy Comparison</label><br>
+    <input type="radio" id="ariaRadio" name="comparisonType" value="aria">
+    <label for="ariaRadio">Aria-Label Links Comparison</label><br>
+    <input type="radio" id="imagesRadio" name="comparisonType" value="images">
+    <label for="imagesRadio">Images Comparison</label><br>
+  </div>
+
+  <div id="resultsContainer">
+    <div id="comparisonTables">
+      <div id="headingTableContainer">
+        <h2>Heading Hierarchy Comparison</h2>
+        <table>
+          <thead>
+            <tr>
+              <th>Set 1</th>
+              <th>Set 2</th>
+              <th>Difference</th>
+            </tr>
+          </thead>
+          <tbody id="headingHierarchyTableBody"></tbody>
+        </table>
+      </div>
+
+      <div id="ariaTableContainer" style="display:none;">
+        <h2>Aria-Label Links Comparison</h2>
+        <table>
+          <thead>
+            <tr>
+              <th>Set 1</th>
+              <th>Set 2</th>
+              <th>Difference</th>
+            </tr>
+          </thead>
+          <tbody id="ariaLabelTableBody"></tbody>
+        </table>
+      </div>
+
+      <div id="imagesTableContainer" style="display:none;">
+        <h2>Images Comparison</h2>
+        <table>
+          <thead>
+            <tr>
+              <th>Set 1</th>
+              <th>Set 2</th>
+              <th>Difference</th>
+            </tr>
+          </thead>
+          <tbody id="imagesTableBody"></tbody>
+        </table>
+      </div>
+    </div>
+  </div>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.17.0/xlsx.full.min.js"></script>
+  <script src="comparison.js"></script>
+</body>
+</html>

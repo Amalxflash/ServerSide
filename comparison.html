@@ -27,6 +27,8 @@
     <label for="ariaRadio">Aria-Label Links Comparison</label><br>
     <input type="radio" id="imagesRadio" name="comparisonType" value="images">
     <label for="imagesRadio">Images Comparison</label><br>
+    <input type="radio" id="textRadio" name="comparisonType" value="text">
+    <label for="textRadio">Text Content Comparison</label><br>
   </div>
 
   <div id="resultsContainer">
@@ -70,6 +72,20 @@
             </tr>
           </thead>
           <tbody id="imagesTableBody"></tbody>
+        </table>
+      </div>
+
+      <div id="textTableContainer" style="display:none;">
+        <h2>Text Content Comparison</h2>
+        <table>
+          <thead>
+            <tr>
+              <th>Set 1</th>
+              <th>Set 2</th>
+              <th>Difference</th>
+            </tr>
+          </thead>
+          <tbody id="textContentTableBody"></tbody>
         </table>
       </div>
     </div>

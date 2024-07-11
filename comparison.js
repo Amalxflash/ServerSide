@@ -16,7 +16,7 @@ document.getElementById('comparisonForm').addEventListener('submit', async (even
       headers: {
         'Content-Type': 'application/json'
       },
-      body: JSON.stringify({ urls: urls1, filterChecked: false, hierarchyChecked: true, ariaLabelChecked: true, imageChecked: true })
+      body: JSON.stringify({ urls: urls1, filterChecked: false, hierarchyChecked: true, ariaLabelChecked: true, imageChecked: true, textChecked: true })
     });
 
     const response2 = await fetch('http://localhost:3000/check-links', {
@@ -24,7 +24,7 @@ document.getElementById('comparisonForm').addEventListener('submit', async (even
       headers: {
         'Content-Type': 'application/json'
       },
-      body: JSON.stringify({ urls: urls2, filterChecked: false, hierarchyChecked: true, ariaLabelChecked: true, imageChecked: true })
+      body: JSON.stringify({ urls: urls2, filterChecked: false, hierarchyChecked: true, ariaLabelChecked: true, imageChecked: true, textChecked: true })
     });
 
     if (!response1.ok || !response2.ok) {
@@ -37,7 +37,6 @@ document.getElementById('comparisonForm').addEventListener('submit', async (even
     displayComparison(results1, results2);
   } catch (error) {
     console.error('Error fetching the provided URLs:', error.message);
-    // Remove the alert statement here to prevent the unwanted alert
   } finally {
     document.getElementById('loading').style.display = 'none';
   }
@@ -46,29 +45,40 @@ document.getElementById('comparisonForm').addEventListener('submit', async (even
 document.getElementById('headingRadio').addEventListener('change', showTable);
 document.getElementById('ariaRadio').addEventListener('change', showTable);
 document.getElementById('imagesRadio').addEventListener('change', showTable);
+document.getElementById('textRadio').addEventListener('change', showTable);
 document.getElementById('allRadio').addEventListener('change', showTable);
 
 function showTable() {
   const headingTable = document.getElementById('headingTableContainer');
   const ariaTable = document.getElementById('ariaTableContainer');
   const imagesTable = document.getElementById('imagesTableContainer');
+  const textTable = document.getElementById('textTableContainer');
 
   if (document.getElementById('headingRadio').checked) {
     headingTable.style.display = '';
     ariaTable.style.display = 'none';
     imagesTable.style.display = 'none';
+    textTable.style.display = 'none';
   } else if (document.getElementById('ariaRadio').checked) {
     headingTable.style.display = 'none';
     ariaTable.style.display = '';
     imagesTable.style.display = 'none';
+    textTable.style.display = 'none';
   } else if (document.getElementById('imagesRadio').checked) {
     headingTable.style.display = 'none';
     ariaTable.style.display = 'none';
     imagesTable.style.display = '';
+    textTable.style.display = 'none';
+  } else if (document.getElementById('textRadio').checked) {
+    headingTable.style.display = 'none';
+    ariaTable.style.display = 'none';
+    imagesTable.style.display = 'none';
+    textTable.style.display = '';
   } else if (document.getElementById('allRadio').checked) {
     headingTable.style.display = '';
     ariaTable.style.display = '';
     imagesTable.style.display = '';
+    textTable.style.display = '';
   }
 }
 
@@ -76,6 +86,7 @@ function displayComparison(results1, results2) {
   document.getElementById('headingHierarchyTableBody').innerHTML = '';
   document.getElementById('ariaLabelTableBody').innerHTML = '';
   document.getElementById('imagesTableBody').innerHTML = '';
+  document.getElementById('textContentTableBody').innerHTML = '';
 
   const getFeatureList = (results, feature) => {
     return results.map(pageResult => pageResult[feature]).flat().map(item => {
@@ -92,10 +103,13 @@ function displayComparison(results1, results2) {
   const ariaLabelList2 = getFeatureList(results2, 'ariaLinks');
   const imageList1 = getFeatureList(results1, 'images');
   const imageList2 = getFeatureList(results2, 'images');
+  const textContentList1 = getFeatureList(results1, 'textContent');
+  const textContentList2 = getFeatureList(results2, 'textContent');
 
   populateTable('headingHierarchyTableBody', headingHierarchyList1, headingHierarchyList2);
   populateTable('ariaLabelTableBody', ariaLabelList1, ariaLabelList2);
   populateTable('imagesTableBody', imageList1, imageList2);
+  populateTable('textContentTableBody', textContentList1, textContentList2);
 }
 
 function populateTable(tableBodyId, list1, list2) {

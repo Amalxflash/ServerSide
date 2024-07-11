@@ -24,7 +24,7 @@ async function checkLink(link) {
         const property = $(element).attr('property');
         const content = $(element).attr('content');
         if (property && content) {
-          metaProperties.push({ property, content });
+          metaProperties.push({ property, content: content.replace(/[\t\n]/g, '').trim() });
         }
       });
 
@@ -53,7 +53,7 @@ async function processLinksInBatches(links, batchSize) {
 }
 
 app.post('/check-links', async (req, res) => {
-  const { urls, filterChecked, hierarchyChecked, ariaLabelChecked, imageChecked, metaChecked } = req.body;
+  const { urls, filterChecked, hierarchyChecked, ariaLabelChecked, imageChecked, metaChecked, textChecked } = req.body;
   const results = [];
 
   for (const url of urls) {
@@ -66,12 +66,25 @@ app.post('/check-links', async (req, res) => {
       const ariaLinks = [];
       const images = [];
       const metaProperties = [];
+      const textContent = [];
 
       // Function to filter out elements inside header and footer
       function filterHeaderFooter(elements) {
         return elements.filter((index, element) => {
           return $(element).closest('header').length === 0 && $(element).closest('footer').length === 0;
         });
+      }
+
+      // Function to extract text content
+      function extractText($, filterChecked) {
+        let elements = $('h1, h2, h3, h4, h5, h6, p, a, div, span, strong');
+        if (filterChecked) {
+          elements = filterHeaderFooter(elements);
+        }
+        return elements.map((index, element) => ({
+          tag: $(element).prop('tagName').toLowerCase(),
+          text: $(element).text().replace(/[\t\n]/g, '').trim()
+        })).get();
       }
 
       // Conditionally extract elements based on checkbox states
@@ -82,13 +95,12 @@ app.post('/check-links', async (req, res) => {
         }
         elements.each((index, element) => {
           hierarchy.push({
-            text: $(element).text(),
+            text: $(element).text().replace(/[\t\n]/g, '').trim(),
             tag: $(element).prop('tagName')
           });
         });
       }
       
-
       if (ariaLabelChecked) {
         let elements = $('a[aria-label]');
         if (filterChecked) {
@@ -96,7 +108,7 @@ app.post('/check-links', async (req, res) => {
         }
         elements.each((index, element) => {
           ariaLinks.push({
-            ariaLabel: $(element).attr('aria-label'),
+            ariaLabel: $(element).attr('aria-label').replace(/[\t\n]/g, '').trim(),
             url: $(element).attr('href'),
             target: $(element).attr('target') || '_self'
           });
@@ -112,7 +124,7 @@ app.post('/check-links', async (req, res) => {
           images.push({
             url,
             src: $(element).attr('src'),
-            alt: $(element).attr('alt')
+            alt: $(element).attr('alt') ? $(element).attr('alt').replace(/[\t\n]/g, '').trim() : null
           });
         });
       }
@@ -121,28 +133,28 @@ app.post('/check-links', async (req, res) => {
         $('meta').each((index, element) => {
           const metaTag = {};
       
-          // Check for various possible meta tag attributes
           if ($(element).attr('property')) {
             metaTag.property = $(element).attr('property');
-            metaTag.content = $(element).attr('content');
+            metaTag.content = $(element).attr('content') ? $(element).attr('content').replace(/[\t\n]/g, '').trim() : null;
           } else if ($(element).attr('name')) {
             metaTag.name = $(element).attr('name');
-            metaTag.content = $(element).attr('content');
+            metaTag.content = $(element).attr('content') ? $(element).attr('content').replace(/[\t\n]/g, '').trim() : null;
           } else {
-            // Handle other attributes as needed
             metaTag.attribute = $(element).attr('attribute');
-            metaTag.content = $(element).attr('content');
+            metaTag.content = $(element).attr('content') ? $(element).attr('content').replace(/[\t\n]/g, '').trim() : null;
           }
       
-          // Only push if the meta tag has relevant data
           if (Object.keys(metaTag).length > 0) {
             metaProperties.push(metaTag);
           }
         });
       }
-      
 
-      if (!hierarchyChecked && !ariaLabelChecked && !imageChecked) {
+      if (textChecked) {
+        textContent.push(...extractText($, filterChecked));
+      }
+
+      if (!hierarchyChecked && !ariaLabelChecked && !imageChecked && !textChecked) {
         let elements = $('a');
         if (filterChecked) {
           elements = filterHeaderFooter(elements);
@@ -157,7 +169,7 @@ app.post('/check-links', async (req, res) => {
 
       const batchSize = 20;
       const pageResults = await processLinksInBatches(links, batchSize);
-      results.push({ pageUrl: url, links: pageResults, hierarchy, ariaLinks, images, metaProperties });
+      results.push({ pageUrl: url, links: pageResults, hierarchy, ariaLinks, images, metaProperties, textContent });
 
     } catch (error) {
       console.error('Error fetching the provided URL:', error.message);

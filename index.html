@@ -28,6 +28,8 @@
       <label for="all">All</label>
       <input type="radio" id="broken" name="status" value="broken">
       <label for="broken">Broken</label>
+      <input type="radio" id="redirects" name="status" value="redirects">
+      <label for="redirects">Redirects</label>
       <input type="checkbox" id="ariaLabel" name="ariaLabel" style="margin-left: 20px;">
       <label for="ariaLabel" id="ariaLabelLabel">Aria-label links</label>
       <input type="checkbox" id="image" name="image" style="margin-left: 20px;">
@@ -36,8 +38,6 @@
       <label for="hierarchy" id="hierarchyLabel">Heading hierarchy</label>
       <input type="checkbox" id="meta" name="meta" style="margin-left: 20px;">
       <label for="meta" id="metaLabel">Page properties</label>
-      <!-- <input type="text" id="domainFilter" placeholder="Filter by domain" style="margin-right: 10px; margin-left: 20px">
-      <input type="text" id="pathFilter" placeholder="Filter by pattern" style="margin-right: 10px; margin-left: 20px"> -->
     </div>
     <table id="resultsTable">
       <thead>
@@ -46,6 +46,7 @@
           <th class="url-column" onclick="sortTable(1)">URL</th>
           <th onclick="sortTable(2)">Status Code</th>
           <th onclick="sortTable(3)">Status</th>
+          <th onclick="sortTable(4)">Final URL</th>
         </tr>
       </thead>
       <tbody id="resultsTableBody">
@@ -138,184 +139,11 @@
 
         const results = await response.json();
 
-        const resultsTableBody = document.getElementById('resultsTableBody');
-        const hierarchyTableBody = document.getElementById('hierarchyTableBody');
-        const ariaLabelTableBody = document.getElementById('ariaLabelTableBody');
-        const imageTableBody = document.getElementById('imageTableBody');
-        const metaTableBody = document.getElementById('metaTableBody');
-
-        resultsTableBody.innerHTML = '';
-        hierarchyTableBody.innerHTML = '';
-        ariaLabelTableBody.innerHTML = '';
-        imageTableBody.innerHTML = '';
-        metaTableBody.innerHTML = '';
-
-        results.forEach(pageResult => {
-          if (pageResult.error) {
-            const row = document.createElement('tr');
-            const nameCell = document.createElement('td');
-            nameCell.textContent = pageResult.pageUrl;
-            nameCell.colSpan = 4;
-            row.appendChild(nameCell);
-            resultsTableBody.appendChild(row);
-
-            const errorRow = document.createElement('tr');
-            const errorCell = document.createElement('td');
-            errorCell.textContent = pageResult.error;
-            errorCell.colSpan = 4;
-            errorRow.appendChild(errorCell);
-            resultsTableBody.appendChild(errorRow);
-          } else {
-            pageResult.links.forEach(result => {
-              const row = document.createElement('tr');
-
-              const nameCell = document.createElement('td');
-              nameCell.textContent = pageResult.pageUrl;
-              if (!pageResult.pageUrl.includes('microsoft.com')) {
-                  nameCell.classList.add('orange');
-              }
-
-              const urlCell = document.createElement('td');
-              urlCell.textContent = result.url;
-              if (result.url.includes('%20')) {
-                urlCell.classList.add('red');
-              } else if (result.url.includes('aka.ms')) {
-                urlCell.classList.add('green');
-              } else if (result.url.match(/^https?:\/\/.*#.*$/)) {
-                urlCell.classList.add('blue');
-              } else if (result.url.startsWith('#')) {
-                urlCell.classList.add('color-03AED2');
-              }
-
-              const statusCodeCell = document.createElement('td');
-              statusCodeCell.textContent = result.statusCode || '-';
-
-              const statusCell = document.createElement('td');
-              statusCell.textContent = getStatusText(result.statusCode);
-              row.appendChild(nameCell);
-              row.appendChild(urlCell);
-              row.appendChild(statusCodeCell); 
-              row.appendChild(statusCell);
-              resultsTableBody.appendChild(row);
-            });
-
-            if (hierarchyChecked) {
-  pageResult.hierarchy.forEach(item => {
-    const row = document.createElement('tr');
-
-    const urlCell = document.createElement('td');
-    urlCell.textContent = pageResult.pageUrl;
-
-    const textCell = document.createElement('td');
-    textCell.textContent = item.text;
-
-    const tagCell = document.createElement('td');
-    tagCell.textContent = item.tag;
-
-    row.appendChild(urlCell);
-    row.appendChild(textCell);
-    row.appendChild(tagCell);
-
-    hierarchyTableBody.appendChild(row);
-  });
-}
-
-
-            if (ariaLabelChecked) {
-              pageResult.ariaLinks.forEach(link => {
-                const row = document.createElement('tr');
-                const mainUrlCell = document.createElement('td');
-                mainUrlCell.textContent = pageResult.pageUrl;
-                const ariaLabelCell = document.createElement('td');
-                ariaLabelCell.textContent = link.ariaLabel;
-                const linkCell = document.createElement('td');
-                linkCell.textContent = link.url;
-                const targetCell = document.createElement('td');
-                targetCell.textContent = link.target;
-                row.appendChild(mainUrlCell);
-                row.appendChild(ariaLabelCell);
-                row.appendChild(linkCell);
-                row.appendChild(targetCell);
-                ariaLabelTableBody.appendChild(row);
-              });
-            }
-
-            if (imageChecked) {
-              pageResult.images.forEach(image => {
-                const row = document.createElement('tr');
-                const mainUrlCell = document.createElement('td');
-                mainUrlCell.textContent = pageResult.pageUrl || 'N/A';
-                const srcCell = document.createElement('td');
-                srcCell.textContent = image.src || 'N/A';
-                const altCell = document.createElement('td');
-                altCell.textContent = image.alt || 'N/A';
-                row.appendChild(mainUrlCell);
-                row.appendChild(srcCell);
-                row.appendChild(altCell);
-                imageTableBody.appendChild(row);
-              });
-            }
-
-            if (metaChecked) {
-  pageResult.metaProperties.forEach(meta => {
-    const row = document.createElement('tr');
-
-    const urlCell = document.createElement('td');
-    urlCell.textContent = pageResult.pageUrl;
-
-    const metaPropertyCell = document.createElement('td');
-    metaPropertyCell.textContent = meta.property || meta.name || meta.charset || meta['http-equiv'] || 'N/A';
-
-    const contentCell = document.createElement('td');
-    contentCell.textContent = meta.content || meta.charset || 'N/A';
-
-    row.appendChild(urlCell);
-    row.appendChild(metaPropertyCell);
-    row.appendChild(contentCell);
-
-    metaTableBody.appendChild(row);
-  });
-}
-
-          }
-        });
+        populateResultsTable(results);
+        populateOtherTables(results);
 
         // Display tables based on checkbox states
-        const resultsTable = document.getElementById('resultsTable');
-        const hierarchyTable = document.getElementById('hierarchyTable');
-        const ariaLabelTable = document.getElementById('ariaLabelTable');
-        const imageTable = document.getElementById('imageTable');
-        const metaTable = document.getElementById('metaTable');
-
-        if (hierarchyChecked) {
-          hierarchyTable.style.display = '';
-        } else {
-          hierarchyTable.style.display = 'none';
-        }
-
-        if (ariaLabelChecked) {
-          ariaLabelTable.style.display = '';
-        } else {
-          ariaLabelTable.style.display = 'none';
-        }
-
-        if (imageChecked) {
-          imageTable.style.display = '';
-        } else {
-          imageTable.style.display = 'none';
-        }
-
-        if (metaChecked) {
-          metaTable.style.display = '';
-        } else {
-          metaTable.style.display = 'none';
-        }
-
-        if (!hierarchyChecked && !ariaLabelChecked && !imageChecked && !metaChecked) {
-          resultsTable.style.display = '';
-        } else {
-          resultsTable.style.display = 'none';
-        }
+        updateTableVisibility();
 
       } catch (error) {
         console.error('Error fetching the provided URL:', error.message);
@@ -326,19 +154,18 @@
       }
     });
 
-    document.getElementById('all').addEventListener('change', () => {
-      filterLinks('all');
-    });
-
-    document.getElementById('broken').addEventListener('change', () => {
-      filterLinks('broken');
-    });
+    document.getElementById('all').addEventListener('change', () => filterLinks('all'));
+    document.getElementById('broken').addEventListener('change', () => filterLinks('broken'));
+    document.getElementById('redirects').addEventListener('change', () => filterLinks('redirects'));
 
     function filterLinks(status) {
       const rows = document.querySelectorAll('#resultsTableBody tr');
       rows.forEach(row => {
+        const statusCodeCell = row.querySelector('td:nth-child(3)');
         const statusCell = row.querySelector('td:nth-child(4)');
-        if (status === 'all' || statusCell.textContent.toLowerCase() === status) {
+        if (status === 'all' || 
+           (status === 'broken' && statusCell.textContent.toLowerCase().includes('broken')) ||
+           (status === 'redirects' && (statusCodeCell.textContent === '301' || statusCodeCell.textContent === '302'))) {
           row.style.display = '';
         } else {
           row.style.display = 'none';
@@ -360,7 +187,144 @@
       }
     }
 
-    // Function to download table data as Excel
+    function populateResultsTable(results) {
+      const resultsTableBody = document.getElementById('resultsTableBody');
+      resultsTableBody.innerHTML = '';
+
+      results.forEach(pageResult => {
+        if (pageResult.error) {
+          const row = document.createElement('tr');
+          const nameCell = document.createElement('td');
+          nameCell.textContent = pageResult.pageUrl;
+          nameCell.colSpan = 5;
+          row.appendChild(nameCell);
+          resultsTableBody.appendChild(row);
+
+          const errorRow = document.createElement('tr');
+          const errorCell = document.createElement('td');
+          errorCell.textContent = pageResult.error;
+          errorCell.colSpan = 5;
+          errorRow.appendChild(errorCell);
+          resultsTableBody.appendChild(errorRow);
+        } else {
+          pageResult.links.forEach(result => {
+            const row = document.createElement('tr');
+
+            const nameCell = document.createElement('td');
+            nameCell.textContent = pageResult.pageUrl;
+            if (!pageResult.pageUrl.includes('microsoft.com')) {
+              nameCell.classList.add('orange');
+            }
+
+            const urlCell = document.createElement('td');
+            urlCell.textContent = result.url;
+            if (result.url.includes('%20')) {
+              urlCell.classList.add('red');
+            } else if (result.url.includes('aka.ms')) {
+              urlCell.classList.add('green');
+            } else if (result.url.match(/^https?:\/\/.*#.*$/)) {
+              urlCell.classList.add('blue');
+            } else if (result.url.startsWith('#')) {
+              urlCell.classList.add('color-03AED2');
+            }
+
+            const statusCodeCell = document.createElement('td');
+            statusCodeCell.textContent = result.statusCode || '-';
+
+            const statusCell = document.createElement('td');
+            statusCell.textContent = getStatusText(result.statusCode);
+
+            const finalUrlCell = document.createElement('td');
+            finalUrlCell.textContent = result.finalUrl || '-';
+
+            row.appendChild(nameCell);
+            row.appendChild(urlCell);
+            row.appendChild(statusCodeCell);
+            row.appendChild(statusCell);
+            row.appendChild(finalUrlCell);
+            resultsTableBody.appendChild(row);
+          });
+        }
+      });
+    }
+
+    function populateOtherTables(results) {
+      // Populate hierarchy table
+      const hierarchyTableBody = document.getElementById('hierarchyTableBody');
+      hierarchyTableBody.innerHTML = '';
+      results.forEach(pageResult => {
+        pageResult.hierarchy.forEach(item => {
+          const row = document.createElement('tr');
+          row.innerHTML = `
+            <td>${pageResult.pageUrl}</td>
+            <td>${item.text}</td>
+            <td>${item.tag}</td>
+          `;
+          hierarchyTableBody.appendChild(row);
+        });
+      });
+
+      // Populate aria-label table
+      const ariaLabelTableBody = document.getElementById('ariaLabelTableBody');
+      ariaLabelTableBody.innerHTML = '';
+      results.forEach(pageResult => {
+        pageResult.ariaLinks.forEach(link => {
+          const row = document.createElement('tr');
+          row.innerHTML = `
+            <td>${pageResult.pageUrl}</td>
+            <td>${link.ariaLabel}</td>
+            <td>${link.url}</td>
+            <td>${link.target}</td>
+          `;
+          ariaLabelTableBody.appendChild(row);
+        });
+      });
+
+      // Populate image table
+      const imageTableBody = document.getElementById('imageTableBody');
+      imageTableBody.innerHTML = '';
+      results.forEach(pageResult => {
+        pageResult.images.forEach(image => {
+          const row = document.createElement('tr');
+          row.innerHTML = `
+            <td>${pageResult.pageUrl}</td>
+            <td>${image.src}</td>
+            <td>${image.alt || ''}</td>
+          `;
+          imageTableBody.appendChild(row);
+        });
+      });
+
+      // Populate meta table
+      const metaTableBody = document.getElementById('metaTableBody');
+      metaTableBody.innerHTML = '';
+      results.forEach(pageResult => {
+        pageResult.metaProperties.forEach(meta => {
+          const row = document.createElement('tr');
+          row.innerHTML = `
+            <td>${pageResult.pageUrl}</td>
+            <td>${meta.property || meta.name || meta.charset || meta['http-equiv'] || 'N/A'}</td>
+            <td>${meta.content || meta.charset || 'N/A'}</td>
+          `;
+          metaTableBody.appendChild(row);
+        });
+      });
+    }
+
+    function updateTableVisibility() {
+      const hierarchyChecked = document.getElementById('hierarchy').checked;
+      const ariaLabelChecked = document.getElementById('ariaLabel').checked;
+      const imageChecked = document.getElementById('image').checked;
+      const metaChecked = document.getElementById('meta').checked;
+
+      document.getElementById('resultsTable').style.display = 
+        !hierarchyChecked && !ariaLabelChecked && !imageChecked && !metaChecked ? '' : 'none';
+      document.getElementById('hierarchyTable').style.display = hierarchyChecked ? '' : 'none';
+      document.getElementById('ariaLabelTable').style.display = ariaLabelChecked ? '' : 'none';
+      document.getElementById('imageTable').style.display = imageChecked ? '' : 'none';
+      document.getElementById('metaTable').style.display = metaChecked ? '' : 'none';
+    }
+
     function downloadAsExcel() {
       const wb = XLSX.utils.book_new();
 
@@ -393,28 +357,6 @@
     }
 
     document.getElementById('downloadButton').addEventListener('click', downloadAsExcel);
-
-    function filterLinksByDomainAndPath() {
-      const domainFilterValue = document.getElementById('domainFilter').value.toLowerCase();
-      const pathFilterValue = document.getElementById('pathFilter').value.toLowerCase();
-      const rows = document.querySelectorAll('#resultsTableBody tr');
-
-      rows.forEach(row => {
-        const urlCell = row.querySelector('td:nth-child(2)');
-        const url = urlCell.textContent.toLowerCase();
-        const domainMatch = domainFilterValue === '' || url.includes(domainFilterValue);
-        const pathMatch = pathFilterValue === '' || url.includes(pathFilterValue);
-
-        if (domainMatch && pathMatch) {
-          row.style.display = '';
-        } else {
-          row.style.display = 'none';
-        }
-      });
-    }
-
-    document.getElementById('domainFilter').addEventListener('input', filterLinksByDomainAndPath);
-    document.getElementById('pathFilter').addEventListener('input', filterLinksByDomainAndPath);
 
     function sortTable(n) {
       const table = document.getElementById('resultsTable');
